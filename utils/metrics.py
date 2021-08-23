@@ -221,7 +221,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
         if CIoU or DIoU or CDIoU or NCDIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center distance squared
-            diou = torch.sqrt(c2)
+            diou = (A + B + C + D) / 4*torch.sqrt(c2)
             
             if DIoU:
                 return iou - rho2 / c2  # DIoU
@@ -238,7 +238,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
             elif l_NCDIoU:
                 alp = 0.5
                 c_area = cw * ch + eps
-                return 1 - alp*iou - (1-alp)*(c_area - union) / c_area) + diou
+                return 1 - alp*iou - ((1-alp)*(c_area - union) / c_area) + diou
                 
         else:  # GIoU https://arxiv.org/pdf/1902.09630.pdf
             c_area = cw * ch + eps  # convex area
