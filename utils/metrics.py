@@ -238,7 +238,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
             elif l_NCDIoU:
                 alp = 0.5
                 c_area = cw * ch + eps
-                return 1 - alp*iou - ((1-alp)*(c_area - union) / c_area) + diou
+                return 1 - iou + (c_area - union) / c_area + diou
                 
         else:  # GIoU https://arxiv.org/pdf/1902.09630.pdf
             c_area = cw * ch + eps  # convex area
