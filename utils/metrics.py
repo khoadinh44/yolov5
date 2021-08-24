@@ -247,7 +247,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
             elif lco_CIoU:
                 v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
                 lo = 0.8*iou + 0.2*iou_true
-                return 1 - v*lo + lcd 
+                return v*lo - lcd 
                 
                 
         else:  # GIoU https://arxiv.org/pdf/1902.09630.pdf
