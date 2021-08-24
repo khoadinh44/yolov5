@@ -233,7 +233,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
             elif CDIoU:
-                l = 0.001
+                l = 0.0001
                 return iou + l*(1 - diou)
             elif l_CDIoU:
                 return 1 - iou + diou
