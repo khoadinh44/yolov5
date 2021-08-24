@@ -216,6 +216,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
     union_true = w2 * h2 + eps
 
     iou = inter / union_true
+    ious = (inter + 1.0) / (union_true + 1.0)
     iou_true = inter / union_true
     if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCDIoU or l_NCDIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
@@ -236,15 +237,15 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
                 l = 0.0001
                 return iou + l*(1 - diou)
             elif l_CDIoU:
-                return 1 - iou + diou
+                return 1 - ious + diou
             elif l_NCDIoU:
                 alp = 0.5
                 c_area = cw * ch + eps
-                return 1 - iou + ((c_area - union) / c_area) + diou
+                return 1 - ious + ((c_area - union) / c_area) + diou
             elif l_NCDIoU_2:
                 alp = 0.5
                 c_area = cw * ch + eps
-                return 2 - iou - iou_true + diou
+                return 2 - ious - iou_true + diou
                 
                 
         else:  # GIoU https://arxiv.org/pdf/1902.09630.pdf
