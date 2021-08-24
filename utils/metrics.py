@@ -217,7 +217,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
 
     iou = inter / union
     iou_true = (inter) / (union_true)
-    if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCDIoU or l_NCDIoU or lco_CIoU:
+    if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCDIoU or NCDIoU_1 or lco_CIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
         if CIoU or DIoU or CDIoU or NCDIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
