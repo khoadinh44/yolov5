@@ -185,6 +185,174 @@ class ConfusionMatrix:
         for i in range(self.nc + 1):
             print(' '.join(map(str, self.matrix[i])))
 
+def box_dious(blist1, blist2):
+    # Get the minimum bounding box (including region proprosal and ground truth) #
+    # n = torch.rand([3, 4])
+    # m = torch.rand([5, 4])
+    n = blist1.cuda()
+    m = blist2.cuda()
+
+    #print("n.shape[0],n.shape[1]:", n.shape[0], n.shape[1])
+    #print("m.shape[0],m.shape[1]:", m.shape[0], m.shape[1])
+    nd0 = n.shape[0]
+    md0 = m.shape[0]
+    #print("##################################################################-------->>")
+    nss = n.unsqueeze(1)
+    nss = nss.expand(nd0, md0, 4)
+    #print("n & n.shape:\n", n, "\n", n.shape)
+    mss = m.unsqueeze(0)
+    mss = mss.expand(nd0, md0, 4)
+    #print("m & m.shape:\n", m, "\n", m.shape)
+    nms = torch.cat((nss, mss), dim=2)
+    #print("nms & nms.shape:\n", nms, "\n", nms.shape)
+
+    A = nms[:, :, [0, 4]]
+    B = nms[:, :, [1, 5]]
+    C = nms[:, :, [2, 6]]
+    D = nms[:, :, [3, 7]]
+    Am = torch.min(A, 2)[0]
+    Bm = torch.min(B, 2)[0]
+    Cm = torch.max(C, 2)[0]
+    Dm = torch.max(D, 2)[0]
+    # AB = torch.cat((Am, Bm), dim=1).cuda()
+    # CD = torch.cat((Cm, Dm), dim=1).cuda()
+    XY = torch.zeros([Am.shape[0], Am.shape[1], 4]).cuda()
+    XY[:, :, 0] = Am
+    XY[:, :, 1] = Bm
+    XY[:, :, 2] = Cm
+    XY[:, :, 3] = Dm
+    XYx = (XY[:, :, [2, 3]] - XY[:, :, [0, 1]]) ** 2
+    XxY = XYx[:, :, 0] + XYx[:, :, 1]
+    XYs = XxY.sqrt()  ###########################-> to get square root
+
+
+    #######################################################
+    #######################################################
+    # The average distance between GT and RP is obtained #
+    nms = torch.cat((n, m), dim=0)
+    #print("nms & nms.shape:\n", nms, "\n", nms.shape)
+    #########################################################
+    #print("n.shape & n:\n", n.shape, "\n", n)
+    n0 = n[:, [0, 3]]  # .unsqueeze(1)
+    n1 = n[:, [1, 2]]  # .unsqueeze(1)
+    #print("n0 & n0.shape:\n", n0, "\n", n0.shape)
+    #print("n1 & n1.shape:\n", n1, "\n", n1.shape)
+    ns = torch.cat((n, n0, n1), dim=1)
+    #print("ns.shape & ns:\n", ns.shape, "\n", ns)
+    ######################################################
+    #print("m.shape & m:\n", m.shape, "\n", m)
+    m0 = m[:, [0, 3]]  # .unsqueeze(1)
+    m1 = m[:, [1, 2]]  # .unsqueeze(1)
+    #print("m0 & m0.shape:\n", m0, "\n", m0.shape)
+    #print("m1 & m1.shape:\n", m1, "\n", m1.shape)
+    ms = torch.cat((m, m0, m1), dim=1)
+    #print("ms.shape & ms:\n", ms.shape, "\n", ms)
+    ################################################################
+    ns = ns.unsqueeze(1)
+    ms = ms.unsqueeze(0)
+    #print("ns.shape & ns->unsqueeze:\n", ns.shape, "\n", ns)
+    #print("ms.shape & ms->unsqueeze:\n", ms.shape, "\n", ms)
+
+    n = ns
+    m = ms
+    #print("n.shape & n:\n", n.shape, "\n", n)
+    #print("m.shape & m:\n", m.shape, "\n", m)
+    tmp = (n - m) ** 2
+    #print("tmp.shape:\n", tmp.shape)
+    #print("tmp1->(n - m) ** 2:\n", tmp)
+    # tmp = tmp[0:-1:2] + tmp[1:-1:2]
+    # print(tmp[:,:,0::2],"\n", tmp[:,:,1::2])
+    tmps = tmp[:, :, 0::2] + tmp[:, :, 1::2]
+    #print("tmps and tmps.shape:\n", tmps, "\n", tmps.shape)
+    # tmp = np.sqrt(tmps)               #######################-> to get square root
+    tmp = tmps.sqrt()
+    #print("tmp3->tmps-square root:\n", tmp, "\n", tmp.shape)
+    # tmp = tmp.mean(axis=2, keepdim=False)/4
+    tmp = torch.mean(tmp, dim=2, keepdim=False) / 4
+    #print("tmp->mean:\n", tmp, "\n", tmp.shape)
+
+    # get DIoU+ #
+    #print("DIoU+ and DIoU.shape:\n", tmp / XYs, "\n", (tmp / XYs).shape)
+    tmpx = (tmp / XYs).cuda()
+    return (tmpx)
+
+def boxlist_ioux(boxlist1, boxlist2):
+    time_start = time.time()
+    """
+    Compute the intersection over union of two set of boxes.
+    The box order must be (xmin, ymin, xmax, ymax).
+    Arguments:
+      box1: (BoxList) bounding boxes, sized [N,4].
+      box2: (BoxList) bounding boxes, sized [M,4].
+    Returns:
+      (tensor) iou, sized [N,M].
+    Reference:
+      https://github.com/chainer/chainercv/blob/master/chainercv/utils/bbox/bbox_iou.py
+    """
+    if boxlist1.size != boxlist2.size:
+        raise RuntimeError(
+                "boxlists should have same image size, got {}, {}".format(boxlist1, boxlist2))
+
+    N = len(boxlist1)
+    M = len(boxlist2)
+
+    # information for boxlist1 and boxlist2:
+    """
+    print("##########################################################################")
+    print(" length of boxlist1:", len(boxlist1))
+    print(" type of boxlist1:", type(boxlist1))
+    print(" boxlist1:\n", boxlist1)
+    print(" length of boxlist2:", len(boxlist2))
+    print(" type of boxlist2:", type(boxlist2))
+    print(" boxlist2:\n", boxlist2)
+    """
+    area1 = boxlist1.area()
+    area2 = boxlist2.area()
+
+    box1, box2 = boxlist1.bbox, boxlist2.bbox
+    """
+    print(" shape of box1:",box1.shape)
+    print(" type of box1:", type(box1))
+    print(" box1:\n", box1)
+    print(" shape of box2:", box2.shape)
+    print(" type of box2:", type(box2))
+    print(" box2:\n", box2)
+    """
+
+    lt = torch.max(box1[:, None, :2], box2[:, :2])  # [N,M,2]
+    rb = torch.min(box1[:, None, 2:], box2[:, 2:])  # [N,M,2]
+
+    TO_REMOVE = 1
+
+    wh = (rb - lt + TO_REMOVE).clamp(min=0)  # [N,M,2]
+    inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]
+
+    iou = inter / (area1[:, None] + area2 - inter)
+    """
+    print(" shape of iou:", iou.shape)
+    print(" type of iou:", type(iou))
+    print(" iou:\n", iou)
+    """
+    # Calculation for DIoU #
+    ## new way to get diou+
+    diou = box_dious(box1, box2)
+    dious = diou
+    diou = 0.0001 * (1 - diou)
+
+    iou = iou + diou
+    """
+    print(" shape of diou:", diou.shape)
+    print(" type of diou:", type(diou))
+    print(" diou:\n", diou)
+    print(" shape of iou:", iou.shape)
+    print(" type of iou:", type(iou))
+    print(" iou:\n", iou)
+    print("##########################################################################")
+    """
+    """
+    improvement for IoU ,-->CD-IoU,go to boxlist_ious(boxlist1,boxlist2):
+    """
+    return iou, dious
 
 def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIoU=False, l_CDIoU=False, NCDIoU=False, l_NCDIoU=False, l_NCDIoU_2=False, eps=1e-7):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
@@ -199,6 +367,9 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
         b1_y1, b1_y2 = box1[1] - box1[3] / 2, box1[1] + box1[3] / 2
         b2_x1, b2_x2 = box2[0] - box2[2] / 2, box2[0] + box2[2] / 2
         b2_y1, b2_y2 = box2[1] - box2[3] / 2, box2[1] + box2[3] / 2
+        
+    box_1_new = torch.cat((b1_x1, b1_x2, b1_y1, b1_y2), 1)
+    box_2_new = torch.cat((b2_x1, b2_x2, b2_y1, b2_y2), 1)
         
     A = torch.sqrt((b1_x1 - b2_x1)**2 + (b1_y1 - b2_y1)**2)
     B = torch.sqrt((b1_x2 - b2_x2)**2 + (b1_y2 - b2_y2)**2)
@@ -216,7 +387,6 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
     union_true = w2 * h2 + eps
 
     iou = inter / union
-    ious = (inter+1.0) / (union+1.0)
     iou_true = (inter) / (union_true)
     if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCDIoU or l_NCDIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
@@ -234,14 +404,13 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
             elif CDIoU:
-                l = 0.0001
-                return iou + l*(1 - diou)
+                return boxlist_ioux(box_1_new, box_2_new)
             elif l_CDIoU:
-                return 1 - ious + diou
+                return 1 - iou + box_dious(box_1_new, box_2_new)
             elif l_NCDIoU:
                 alp = 0.5
                 c_area = cw * ch + eps
-                return 1 - ious + ((c_area - union) / c_area) + diou
+                return 1 - iou + ((c_area - union) / c_area) + diou
             elif l_NCDIoU_2:
                 alp = 0.5
                 c_area = cw * ch + eps
