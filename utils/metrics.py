@@ -224,6 +224,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
             c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center distance squared
             diou = (A + B + C + D) / (4*c2)
+            diou1 = (A**2 + B**2 + C**2 + D**2) / (4*c2**2)
             lcd = (A + B) / (4*c2)
             
             if DIoU:
@@ -243,7 +244,8 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
                 lo = 0.8*iou + 0.2*iou_true
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
-                return lo - (diou + v * alpha) 
+                return lo - diou1
+                # return lo - (diou1 + v * alpha) 
             elif lco_CIoU:
                 v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
                 lo = 0.8*iou + 0.2*iou_true
