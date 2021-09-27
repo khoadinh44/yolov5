@@ -130,7 +130,7 @@ class ConfusionMatrix:
         detections = detections[detections[:, 4] > self.conf]
         gt_classes = labels[:, 0].int()
         detection_classes = detections[:, 5].int()
-        iou = box_iou(labels[:, 1:], detections[:, :4])
+        iou = box_iou(labels[:, 1:], detections[:, :4], IoU=True)
 
         x = torch.where(iou > self.iou_thres)
         if x[0].shape[0]:
@@ -186,7 +186,7 @@ class ConfusionMatrix:
             print(' '.join(map(str, self.matrix[i])))
 
 
-def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIoU=False, l_CDIoU=False, NCIoU=False, UpdateCIoU=False, lco_CIoU=False, eps=1e-7):
+def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=False, CDIoU=False, l_CDIoU=False, NCIoU=False, UpdateCIoU=False, lco_CIoU=False, eps=1e-7):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
     box2 = box2.T
 
@@ -216,6 +216,8 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, CDIo
     union_true = w2 * h2 + eps
 
     iou = inter / union
+    if IoU == True:
+      return iou
     iou_true = inter / union_true
     if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCIoU or UpdateCIoU or lco_CIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
