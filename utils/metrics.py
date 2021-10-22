@@ -10,6 +10,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from torch.nn import CrossEntropyLoss
 
 
 def fitness(x):
@@ -227,7 +228,9 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center distance squared
             diou = (A + B + C + D) / (4*c2)
             diou1 = (A**2 + B**2 + C**2 + D**2) / (4*c2**2)
-            lcd = (A + B) / (4*c2)
+            lAC = (A + C) / (2*c2)
+            
+            loss = CrossEntropyLoss()
             
             if DIoU:
                 return iou - rho2 / c2  # DIoU
@@ -246,7 +249,9 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
                 lo = 0.8*iou + 0.2*iou_true
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
-                return lo - diou1
+                lo_ones = torch.ones(lo.shape)
+                lAC_ones = torch.ones(lAC.shape)
+                return loss(lo, lo_ones) + loss(lAC, lAC_ones)
             elif NCIoU:
                 v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
                 lo = 0.8*iou + 0.2*iou_true
