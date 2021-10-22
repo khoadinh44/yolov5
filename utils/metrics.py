@@ -187,7 +187,7 @@ class ConfusionMatrix:
             print(' '.join(map(str, self.matrix[i])))
 
 
-def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=False, CDIoU=False, l_CDIoU=False, NCIoU=False, UpdateCIoU=False, lco_CIoU=False, eps=1e-7):
+def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=False, CDIoU=False, l_CDIoU=False, NCIoU=False, UpdateCIoU=False, UpdateCIoU_loss=False, lco_CIoU=False, eps=1e-7):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
     box2 = box2.T
 
@@ -220,7 +220,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
     if IoU == True:
       return iou
     iou_true = inter / union_true
-    if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCIoU or UpdateCIoU or lco_CIoU:
+    if GIoU or DIoU or CIoU or CDIoU or l_CDIoU or NCIoU or UpdateCIoU or UpdateCIoU_loss or lco_CIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
         if CIoU or DIoU or CDIoU or NCIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
@@ -228,7 +228,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center distance squared
             diou = (A + B + C + D) / (4*c2)
             diou1 = (A**2 + B**2 + C**2 + D**2) / (4*c2**2)
-            lAC = (A + C) / (2*c2)
+            lAC = (A**2 + C**2) / (c2**2)
             
             loss = CrossEntropyLoss()
             
@@ -245,10 +245,10 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (diou + v * alpha) 
             elif UpdateCIoU:
-                v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
+                lo = 0.8*iou + 0.2*iou_true 
+                return lo - lAC
+            elif UpdateCIoU_loss:
                 lo = 0.8*iou + 0.2*iou_true
-                with torch.no_grad():
-                    alpha = v / (v - iou + (1 + eps))
                 lo_ones = torch.ones(lo.shape)
                 lAC_ones = torch.ones(lAC.shape)
                 return loss(lo, lo_ones) + loss(lAC, lAC_ones)
