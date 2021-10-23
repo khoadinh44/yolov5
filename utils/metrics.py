@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.nn import CrossEntropyLoss
+from utils.loss import FocalLoss
 
 
 def fitness(x):
@@ -230,7 +231,8 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
             diou1 = (A**2 + B**2 + C**2 + D**2) / (4*c2**2)
             lAC = (A**2 + C**2) / (c2**2)
             
-            loss = CrossEntropyLoss()
+#             loss = CrossEntropyLoss()
+            loss = FocalLoss()
             
             if DIoU:
                 return iou - rho2 / c2  # DIoU
@@ -250,8 +252,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
             elif UpdateCIoU_loss:
                 lo = 0.8*iou + 0.2*iou_true
                 lo_ones = torch.ones(lo.shape)
-                lAC_ones = torch.ones(lAC.shape)
-                return loss(lo, lo_ones) + loss(lAC, lAC_ones)
+                return loss(lo, lo_ones) + lAC
             elif NCIoU:
                 v = (4 / math.pi ** 2) * torch.pow(torch.atan(w2 / h2) - torch.atan(w1 / h1), 2)
                 lo = 0.8*iou + 0.2*iou_true
