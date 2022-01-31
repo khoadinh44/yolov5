@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+def KL(x):
+    return x*torch.log(x) + (1-x)*torch.log(1-x)
 
 def fitness(x):
     # Model fitness as a weighted combination of metrics
@@ -205,7 +207,7 @@ def Heaviside_step(x, delta=0.5):
 
     return torch.where(x<delta, (x/(2*delta) + 0.5), x)
 
-def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=False, UIoU=False, eps=1e-7):
+def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=False, UIoU=False, UIoU2=False, eps=1e-7):
     # Returns the IoU of box1 to box2. box1 is 4, box2 is nx4
     box2 = box2.T
 
@@ -238,10 +240,10 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
     if IoU == True:
       return iou
     iou_true = inter / union_true
-    if GIoU or DIoU or CIoU or UIoU:
+    if GIoU or DIoU or CIoU or UIoU or UIoU2:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
-        if CIoU or DIoU or UIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
+        if CIoU or DIoU or UIoU or UIoU2:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center distance squared
             lAC = (A**2 + C**2) / (c2**2)
@@ -255,7 +257,9 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
             elif UIoU:
                 # lo = 0.8*iou + 0.2*iou_true 
                 # return lo - lAC    
-                return Heaviside_step(iou) - lAC               
+                return Heaviside_step(iou) - lAC    
+            elif UIoU2:
+                return KL(IoU) + lAC
         else:  # GIoU https://arxiv.org/pdf/1902.09630.pdf
             c_area = cw * ch + eps  # convex area
             return iou - (c_area - union) / c_area  # GIoU
