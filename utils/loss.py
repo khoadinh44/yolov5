@@ -133,8 +133,8 @@ class ComputeLoss:
                 pxy = ps[:, :2].sigmoid() * 2. - 0.5
                 pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i]
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
-                iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, UIoU=True)  # iou(prediction, target)
-                lbox += (1-iou).mean()
+                iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, UIoU2=True).mean()  # iou(prediction, target)
+#                 lbox += (1-iou).mean()
 
                 # Objectness
                 score_iou = iou.detach().clamp(0).type(tobj.dtype)
