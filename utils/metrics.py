@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 def KL(x):
-    return x*torch.log(x) + (1-x)*torch.log(1-x)
+    return x*torch.log(x/(2-x))
 
 def fitness(x):
     # Model fitness as a weighted combination of metrics
@@ -259,7 +259,7 @@ def bbox_iou(box1, box2, x1y1x2y2=True, IoU=False, GIoU=False, DIoU=False, CIoU=
                 # return lo - lAC    
                 return Heaviside_step(iou) - lAC    
             elif UIoU2:
-                return KL(IoU) + lAC
+                return iou - KL(lAC)
         else:  # GIoU https://arxiv.org/pdf/1902.09630.pdf
             c_area = cw * ch + eps  # convex area
             return iou - (c_area - union) / c_area  # GIoU
